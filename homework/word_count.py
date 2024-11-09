@@ -1,3 +1,4 @@
+
 """Taller evaluable"""
 
 # pylint: disable=broad-exception-raised
@@ -6,6 +7,7 @@ import fileinput
 import glob
 import os.path
 from itertools import groupby
+import string
 
 
 #
@@ -25,6 +27,13 @@ from itertools import groupby
 #
 def load_input(input_directory):
     """Funcion load_input"""
+    frase = []
+    files = glob.glob(f"{input_directory}/*")
+
+    with fileinput.input(files=files) as fras:
+        for line in fras:
+            frase.append((fileinput.filename(), line))
+    return frase
 
 
 #
@@ -32,10 +41,14 @@ def load_input(input_directory):
 # función anterior y retorna una lista de tuplas (clave, valor). Esta función
 # realiza el preprocesamiento de las líneas de texto,
 #
-def line_preprocessing(sequence):
+def line_preprocessing(frase):
     """Line Preprocessing"""
 
-
+    frase = [
+        (key, value.translate(str.maketrans("", "", string.punctuation)).lower().strip())
+        for key, value in frase
+    ]
+    return frase
 #
 # Escriba una función llamada maper que recibe una lista de tuplas de la
 # función anterior y retorna una lista de tuplas (clave, valor). En este caso,
@@ -48,10 +61,17 @@ def line_preprocessing(sequence):
 #     ...
 #   ]
 #
-def mapper(sequence):
+def mapper(frase):
     """Mapper"""
+    result = []
 
-
+    for _, value in frase:
+        for word in value.split():
+           result.append((word, 1))  
+    return result
+    
+    #return [(word, 1) for _, value in frase for word in value.split()]
+  
 #
 # Escriba la función shuffle_and_sort que recibe la lista de tuplas entregada
 # por el mapper, y retorna una lista con el mismo contenido ordenado por la
@@ -63,9 +83,10 @@ def mapper(sequence):
 #     ...
 #   ]
 #
-def shuffle_and_sort(sequence):
+def shuffle_and_sort(frase):
     """Shuffle and Sort"""
 
+    return sorted(frase, key=lambda x: x[0])
 
 #
 # Escriba la función reducer, la cual recibe el resultado de shuffle_and_sort y
@@ -73,8 +94,16 @@ def shuffle_and_sort(sequence):
 # ejemplo, la reducción indica cuantas veces aparece la palabra analytics en el
 # texto.
 #
-def reducer(sequence):
+def reducer(frase):
     """Reducer"""
+
+    result = {}
+    for key, value in frase:
+        if key not in result.keys():
+            result[key] = 0
+        result[key] += value
+        
+    return list(result.items())
 
 
 #
@@ -83,7 +112,11 @@ def reducer(sequence):
 #
 def create_ouptput_directory(output_directory):
     """Create Output Directory"""
-
+    if os.path.exists(output_directory):
+        for file in glob.glob(f"{output_directory}/*"):
+            os.remove(file)
+        os.rmdir(output_directory)
+    os.makedirs(output_directory)
 
 #
 # Escriba la función save_output, la cual almacena en un archivo de texto
@@ -93,9 +126,11 @@ def create_ouptput_directory(output_directory):
 # elemento es la clave y el segundo el valor. Los elementos de la tupla están
 # separados por un tabulador.
 #
-def save_output(output_directory, sequence):
+def save_output(output_directory, frase):
     """Save Output"""
-
+    with open(f"{output_directory}/part-00000", "w", encoding="utf-8") as f:
+        for key, value in frase:
+            f.write(f"{key}\t{value}\n")
 
 #
 # La siguiente función crea un archivo llamado _SUCCESS en el directorio
@@ -103,6 +138,8 @@ def save_output(output_directory, sequence):
 #
 def create_marker(output_directory):
     """Create Marker"""
+    with open(f"{output_directory}/_SUCCESS", "w", encoding="utf-8") as f:
+        f.write("")
 
 
 #
@@ -110,10 +147,20 @@ def create_marker(output_directory):
 #
 def run_job(input_directory, output_directory):
     """Job"""
+    frase = load_input(input_directory)
+    frase = line_preprocessing(frase)
+    frase = mapper(frase)
+    frase = shuffle_and_sort(frase)
+    frase = reducer(frase)
+    create_ouptput_directory(output_directory)
+    save_output(output_directory, frase)
+    create_marker(output_directory)
 
+    from pprint import pprint
+    pprint(frase)
 
 if __name__ == "__main__":
     run_job(
-        "input",
-        "output",
+        "files/input",
+        "files/output",
     )
